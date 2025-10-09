@@ -2,7 +2,7 @@ import os
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-
+from sqlalchemy import text
 from src.database import Base, get_db
 from src.main import app
 from src.models import User
@@ -27,6 +27,23 @@ async def prepare_database():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
+
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def seed_user(session):
+    """Додає тестового користувача перед кожним тестом"""
+    from src.models import User
+
+    user = User(id=1, email="test@example.com", hashed_password="fake", is_verified=True)
+    session.add(user)
+    await session.commit()
+    yield
+
+    from sqlalchemy import text
+    await session.execute(text("DELETE FROM contacts;"))
+    await session.execute(text("DELETE FROM users;"))
+    await session.commit()
+
 
 
 @pytest_asyncio.fixture(scope="function")
